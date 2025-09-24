@@ -4,150 +4,53 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { colors, commonStyles } from '../styles/commonStyles';
-import EventCard from '../components/EventCard';
-import Icon from '../components/Icon';
 import { useEvents } from '../hooks/useEvents';
 import { useNotifications } from '../hooks/useNotifications';
-import EventForm from '../components/EventForm';
 import { Event, EventFormData } from '../types/Event';
-import SimpleBottomSheet from '../components/BottomSheet';
-import CalendarGrid from '../components/CalendarGrid';
 import { formatDate, getMonthName, addMonths } from '../utils/dateUtils';
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    ...commonStyles.header,
-    paddingHorizontal: 16,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginLeft: 12,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerButton: {
-    backgroundColor: colors.backgroundAlt,
-    borderRadius: 20,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  addButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    padding: 8,
-  },
-  monthNavigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  monthButton: {
-    padding: 8,
-  },
-  monthText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  calendarContainer: {
-    backgroundColor: colors.background,
-  },
-  selectedDateContainer: {
-    backgroundColor: colors.backgroundAlt,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  selectedDateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  eventsContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  eventsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  eventsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  eventCount: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  eventsList: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  noEventsContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  noEventsText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-  },
-});
+import CalendarGrid from '../components/CalendarGrid';
+import EventCard from '../components/EventCard';
+import EventForm from '../components/EventForm';
+import SimpleBottomSheet from '../components/BottomSheet';
+import Icon from '../components/Icon';
 
 export default function CalendarScreen() {
+  const { requestPermissions } = useNotifications();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string>(formatDate(new Date()));
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showEventForm, setShowEventForm] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<Event | undefined>();
-  
-  const { events, addEvent, updateEvent, deleteEvent } = useEvents();
-  const { scheduleEventReminder, cancelEventReminder } = useNotifications();
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const selectedDateEvents = events.filter(event => event.date === selectedDate);
+  const {
+    events,
+    loading,
+    addEvent,
+    updateEvent,
+    deleteEvent,
+    getEventsForDate,
+  } = useEvents();
+
+  useEffect(() => {
+    requestPermissions();
+  }, []);
 
   const handleDatePress = (date: string) => {
+    console.log('Date pressed:', date);
     setSelectedDate(date);
   };
 
   const handlePreviousMonth = () => {
-    setCurrentDate(addMonths(currentDate, -1));
+    setCurrentDate(prev => addMonths(prev, -1));
+    setSelectedDate(null);
   };
 
   const handleNextMonth = () => {
-    setCurrentDate(addMonths(currentDate, 1));
+    setCurrentDate(prev => addMonths(prev, 1));
+    setSelectedDate(null);
   };
 
   const handleAddEvent = () => {
-    setEditingEvent(undefined);
+    setEditingEvent(null);
     setShowEventForm(true);
   };
 
@@ -158,136 +61,111 @@ export default function CalendarScreen() {
 
   const handleDeleteEvent = (eventId: string) => {
     deleteEvent(eventId);
-    cancelEventReminder(eventId);
   };
 
   const handleSaveEvent = async (eventData: EventFormData) => {
     try {
-      let savedEvent: Event;
-      
       if (editingEvent) {
-        savedEvent = await updateEvent(editingEvent.id, eventData);
-        // Cancel old reminder and schedule new one
-        await cancelEventReminder(editingEvent.id);
+        await updateEvent(editingEvent.id, eventData);
+        console.log('Event updated successfully');
       } else {
-        savedEvent = await addEvent(eventData);
+        await addEvent(eventData);
+        console.log('Event added successfully');
       }
-      
-      // Schedule notification reminder
-      await scheduleEventReminder(savedEvent);
-      
       setShowEventForm(false);
-      setEditingEvent(undefined);
+      setEditingEvent(null);
     } catch (error) {
-      console.log('Error saving event:', error);
+      console.error('Error saving event:', error);
     }
   };
 
   const handleCancelEventForm = () => {
     setShowEventForm(false);
-    setEditingEvent(undefined);
+    setEditingEvent(null);
   };
 
   const formatSelectedDate = () => {
+    if (!selectedDate) return '';
     const date = new Date(selectedDate);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (formatDate(date) === formatDate(today)) {
-      return 'Today';
-    } else if (formatDate(date) === formatDate(tomorrow)) {
-      return 'Tomorrow';
-    } else {
-      return date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      });
-    }
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
   };
 
   const handleGroupsPress = () => {
     router.push('/groups');
   };
 
+  const handleEventPress = (event: Event) => {
+    router.push(`/event/${event.id}`);
+  };
+
+  const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Icon name="calendar" size={28} color={colors.primary} />
-          <Text style={styles.headerTitle}>Calendar</Text>
+          <TouchableOpacity onPress={handlePreviousMonth} style={styles.navButton}>
+            <Icon name="chevron-left" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.monthTitle}>
+            {getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}
+          </Text>
+          <TouchableOpacity onPress={handleNextMonth} style={styles.navButton}>
+            <Icon name="chevron-right" size={24} color={colors.text} />
+          </TouchableOpacity>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleGroupsPress}>
-            <Icon name="people" size={20} color={colors.text} />
+          <TouchableOpacity onPress={handleGroupsPress} style={styles.groupsButton}>
+            <Icon name="users" size={24} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddEvent}>
-            <Icon name="add" size={20} color={colors.background} />
+          <TouchableOpacity onPress={handleAddEvent} style={styles.addButton}>
+            <Icon name="plus" size={24} color={colors.background} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.monthNavigation}>
-        <TouchableOpacity style={styles.monthButton} onPress={handlePreviousMonth}>
-          <Icon name="chevron-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.monthText}>
-          {getMonthName(month)} {year}
-        </Text>
-        <TouchableOpacity style={styles.monthButton} onPress={handleNextMonth}>
-          <Icon name="chevron-forward" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+      <CalendarGrid
+        year={currentDate.getFullYear()}
+        month={currentDate.getMonth()}
+        events={events}
+        selectedDate={selectedDate}
+        onDatePress={handleDatePress}
+      />
 
-      <View style={styles.calendarContainer}>
-        <CalendarGrid
-          year={year}
-          month={month}
-          events={events}
-          selectedDate={selectedDate}
-          onDatePress={handleDatePress}
-        />
-      </View>
-
-      <View style={styles.selectedDateContainer}>
-        <Text style={styles.selectedDateText}>{formatSelectedDate()}</Text>
-      </View>
-
-      <View style={styles.eventsContainer}>
-        <View style={styles.eventsHeader}>
-          <Text style={styles.eventsTitle}>Events</Text>
-          <Text style={styles.eventCount}>
-            {selectedDateEvents.length} event{selectedDateEvents.length !== 1 ? 's' : ''}
+      {selectedDate && (
+        <View style={styles.selectedDateSection}>
+          <Text style={styles.selectedDateTitle}>
+            {formatSelectedDate()}
           </Text>
-        </View>
-
-        {selectedDateEvents.length === 0 ? (
-          <View style={styles.noEventsContainer}>
-            <Icon name="calendar-outline" size={48} color={colors.textSecondary} />
-            <Text style={styles.noEventsText}>
-              No events scheduled for this day.{'\n'}Tap the + button to add an event.
-            </Text>
-          </View>
-        ) : (
-          <ScrollView style={styles.eventsList} showsVerticalScrollIndicator={false}>
-            {selectedDateEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onPress={() => handleEditEvent(event)}
-                onEdit={() => handleEditEvent(event)}
-                onDelete={() => handleDeleteEvent(event.id)}
-              />
-            ))}
+          <ScrollView style={styles.eventsContainer} showsVerticalScrollIndicator={false}>
+            {selectedDateEvents.length === 0 ? (
+              <View style={styles.noEventsContainer}>
+                <Icon name="calendar" size={48} color={colors.textSecondary} />
+                <Text style={styles.noEventsText}>No events for this day</Text>
+                <TouchableOpacity onPress={handleAddEvent} style={styles.addEventButton}>
+                  <Text style={styles.addEventButtonText}>Add Event</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              selectedDateEvents.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onPress={() => handleEventPress(event)}
+                  onEdit={() => handleEditEvent(event)}
+                  onDelete={() => handleDeleteEvent(event.id)}
+                />
+              ))
+            )}
           </ScrollView>
-        )}
-      </View>
+        </View>
+      )}
 
-      <SimpleBottomSheet
-        isVisible={showEventForm}
-        onClose={handleCancelEventForm}
-      >
+      <SimpleBottomSheet isVisible={showEventForm} onClose={handleCancelEventForm}>
         <EventForm
           event={editingEvent}
           initialDate={selectedDate}
@@ -298,3 +176,90 @@ export default function CalendarScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  navButton: {
+    padding: 8,
+  },
+  monthTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginHorizontal: 16,
+  },
+  groupsButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  addButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedDateSection: {
+    flex: 1,
+    backgroundColor: colors.backgroundAlt,
+  },
+  selectedDateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  eventsContainer: {
+    flex: 1,
+    paddingVertical: 8,
+  },
+  noEventsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  noEventsText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 16,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  addEventButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  addEventButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
