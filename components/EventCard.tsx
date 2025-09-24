@@ -3,7 +3,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../styles/commonStyles';
 import { Event } from '../types/Event';
-import { useComments } from '../hooks/useComments';
 import Icon from './Icon';
 
 interface EventCardProps {
@@ -14,9 +13,6 @@ interface EventCardProps {
 }
 
 export default function EventCard({ event, onPress, onEdit, onDelete }: EventCardProps) {
-  const { getCommentCount } = useComments();
-  const commentCount = getCommentCount(event.id);
-
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':');
     const hour = parseInt(hours);
@@ -77,20 +73,11 @@ export default function EventCard({ event, onPress, onEdit, onDelete }: EventCar
           </Text>
         )}
 
-        <View style={styles.footer}>
-          {event.category && (
-            <View style={styles.categoryContainer}>
-              <Text style={styles.categoryText}>{event.category}</Text>
-            </View>
-          )}
-          
-          {commentCount > 0 && (
-            <View style={styles.commentContainer}>
-              <Icon name="message-circle" size={14} color={colors.textSecondary} />
-              <Text style={styles.commentCount}>{commentCount}</Text>
-            </View>
-          )}
-        </View>
+        {event.category && (
+          <View style={styles.categoryContainer}>
+            <Text style={styles.categoryText}>{event.category}</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -163,12 +150,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     lineHeight: 20,
-    marginBottom: 12,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 8,
   },
   categoryContainer: {
     alignSelf: 'flex-start',
@@ -180,16 +162,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    fontWeight: '500',
-  },
-  commentContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  commentCount: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 4,
     fontWeight: '500',
   },
 });

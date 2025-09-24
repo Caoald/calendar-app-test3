@@ -13,7 +13,6 @@ export interface Event {
   location?: string;
   createdAt: string;
   updatedAt: string;
-  comments?: string[]; // Array of comment IDs
 }
 
 export interface CalendarDay {
