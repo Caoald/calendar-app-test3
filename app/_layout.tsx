@@ -1,3 +1,4 @@
+
 import { Stack, useGlobalSearchParams } from 'expo-router';
 import { SafeAreaProvider, useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Platform } from 'react-native';
@@ -52,7 +53,12 @@ export default function RootLayout() {
               headerShown: false,
               animation: 'default',
             }}
-          />
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="groups" />
+            <Stack.Screen name="group/[id]" />
+            <Stack.Screen name="chat/[groupId]" />
+          </Stack>
         </GestureHandlerRootView>
     </SafeAreaProvider>
   );
